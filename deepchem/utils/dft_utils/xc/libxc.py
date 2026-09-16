@@ -97,22 +97,32 @@ class LibXCLDA(BaseXC):
             potentialinfo.grad: (*BD, nr, ndim)
 
         """
+        print("===================================================Inside get_vxc in libxy.py========================================================")
         libxc_inps = _prepare_libxc_input(densinfo, xcfamily=self.family)
+        print("electron density value = ", libxc_inps)
+        for i, inp in enumerate(libxc_inps):
+            print(f"libxc_inps[{i}] shape =", inp.shape)
         flatten_inps = tuple(inp.reshape(-1) for inp in libxc_inps)
+        print("reshaped electron density = ", flatten_inps)
+        for i, inp in enumerate(flatten_inps):
+            print(f"flatten_inps[{i}] shape =", inp.shape)
 
         # polarized case
         if not isinstance(densinfo, ValGrad):
             # outs are (vrho,) for LDA, (vrho, vsigma) for GGA each with shape
             # (nspin, *shape)
             outs = self._calc_pol(flatten_inps, densinfo.u.value.shape, 1)
+            print("outs polarized case in libxc.py =", outs)
 
         # unpolarized case
         else:
             # outs are (vrho,) for LDA, (vrho, vsigma) for GGA each with shape
             # (*shape)
             outs = self._calc_unpol(flatten_inps, densinfo.value.shape, 1)
+            print("outs unpolarized case in libxc.py =", outs)
 
         potinfo = _postproc_libxc_voutput(densinfo, *outs)
+        print("===================================================Outside get_vxc in libxy.py========================================================")
         return potinfo
 
     def get_edensityxc(self, densinfo: Union[ValGrad, SpinParam[ValGrad]]) -> \
@@ -149,6 +159,7 @@ class LibXCLDA(BaseXC):
         else:
             edens = self._calc_unpol(flatten_inps, densinfo.value.shape,
                                      0)[0]  # (*BD, nr)
+            print("edens inside get_edensityxc function in libxc.py = ", edens)
             return edens
 
     def _calc_pol(self, flatten_inps: Tuple[torch.Tensor, ...], shape: torch.Size, deriv: int) ->\
@@ -196,9 +207,12 @@ class LibXCLDA(BaseXC):
             Outputs from libxc
 
         """
-
+        print("===================================================Inside _calc_unopol========================================================")
+        print("self.libxc_unpol in libxc.py = ", self.libxc_unpol)
         outs = self._unpolfcn_wrapper.apply(*flatten_inps, deriv,
                                             self.libxc_unpol)
+        print("outs in _calc_unpol in libxc.py = ", outs)
+        print("===================================================Outside _calc_unopol========================================================")
 
         # tuple of (*shape) where shape
         return tuple(out.reshape(shape) for out in outs)

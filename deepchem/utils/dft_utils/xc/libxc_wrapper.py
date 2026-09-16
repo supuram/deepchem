@@ -68,7 +68,9 @@ class CalcLDALibXCUnpol(torch.autograd.Function):
         inp = {
             "rho": rho.detach().numpy(),
         }
+        print("inp in libxc_wrapper.py  = ", inp)
         res = _get_libxc_res(inp, deriv, libxcfcn, family=1, polarized=False)[0]
+        print("res inside forward in CalcLDALibXCUnpol in libxc_wrapper.py = ", res)
 
         ctx.save_for_backward(rho, res)
         ctx.deriv = deriv
@@ -812,11 +814,13 @@ def _get_libxc_res(inp: Mapping[str, Union[np.ndarray, Tuple[np.ndarray, ...],
 
     """
     do_exc, do_vxc, do_fxc, do_kxc, do_lxc = _get_dos(deriv)
+    print("do_exc = ", do_exc)
 
     inp = {
         k: v.detach().cpu().numpy() if isinstance(v, torch.Tensor) else v
         for k, v in inp.items()
     }
+    print("inp in _get_libxc_res in libxc_wrapper.py = ", inp)
 
     res = libxcfcn.compute(inp,
                            do_exc=do_exc,
@@ -824,9 +828,12 @@ def _get_libxc_res(inp: Mapping[str, Union[np.ndarray, Tuple[np.ndarray, ...],
                            do_fxc=do_fxc,
                            do_kxc=do_kxc,
                            do_lxc=do_lxc)
+    print("res = libxcfcn.compute in _get_libxc_res in libxc_wrapper.py =", res)
 
     # compile the results in a tuple with order given in the *_KEYS (e.g. LDA_KEYS)
     res = _extract_returns(res, deriv, family)
+    print("res inside _get_libxc_res in libxc_wrapper.py = ", res)
+    print("\n")
 
     # In libxc, "zk" is the only one returning the energy density
     # per unit volume PER UNIT PARTICLE.
@@ -834,12 +841,15 @@ def _get_libxc_res(inp: Mapping[str, Union[np.ndarray, Tuple[np.ndarray, ...],
     # only.
     if deriv == 0:
         rho = inp["rho"]
+        print("rho inside _get_libxc_res in libxc_wrapper.py = ", rho)
         if polarized:
             assert isinstance(rho, np.ndarray)
             start = np.zeros(1, dtype=rho.dtype)
             rho = sum(_unpack_input(rho), start)  # rho[:, 0] + rho[:, 1]
         res0 = res[0] * torch.as_tensor(rho)
+        print("res0 inside _get_libxc_res in libxc_wrapper.py = ", res0)
         res = (res0, *res[1:])
+        print("res again inside _get_libxc_res in libxc_wrapper.py = ", res)
 
     return res
 
@@ -1005,10 +1015,14 @@ def _extract_returns(ret: Mapping[str, np.ndarray], deriv: int, family: int) -> 
         raise RuntimeError("Unknown libxc family %d" % family)
 
     selected = keys[deriv]
+    print("selected in _extract_returns in libxc_wrapper.py = ", selected)
     missing = [key for key in selected if key not in ret]
+    print("missing in _extract_returns in libxc_wrapper.py = ", missing)
     if missing:
         zero = np.zeros_like(ret[selected[0]])
         ret = {**ret, **{key: zero for key in missing}}
+        print("ret inside _extract_returs = ", ret)
+    print("tuple(a(ret[key]) for key in selected) = ", tuple(a(ret[key]) for key in selected))
     return tuple(a(ret[key]) for key in selected)
 
 

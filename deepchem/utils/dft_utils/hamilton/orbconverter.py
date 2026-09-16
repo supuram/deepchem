@@ -22,7 +22,8 @@ class OrbitalOrthogonalizer(EditableModule):
     """
 
     def __init__(self, ovlp: torch.Tensor, threshold: float = 1e-6):
-        """Initialize the orbital orthogonalizer.
+        # Finds X = U * s^(-0.5)
+        """Initialize the orbital orthogonalizer. 
 
         Parameters
         ----------
@@ -49,6 +50,7 @@ class OrbitalOrthogonalizer(EditableModule):
         return self._orthozer.shape[-1]
 
     def convert2(self, mat: torch.Tensor) -> torch.Tensor:
+        # Finds M' = X(dagger) * M * X and if M = S then X(dagger) * S * X = I
         """
         Convert the last 2 dimensions of the matrix with shape (..., nao, nao)
         into the new orbital basis sets with shape (..., nao2, nao2)

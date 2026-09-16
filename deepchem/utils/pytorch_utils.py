@@ -167,15 +167,21 @@ def chunkify(a: torch.Tensor, dim: int, maxnumel: int) -> \
         raise RuntimeError(msg)
 
     csize = min(maxnumel // nondimnumel, dimnumel)
+    print("===================================================Inside chunkify========================================================")
+    print("dim = ", dim, "   ", "numel = ", numel, "   ", "dimnumel = ", dimnumel, "   ", "nondimnumel = ", nondimnumel, "   ", "csize = ", csize)
     ioffset = 0
-    lslice = (slice(None, None, None),) * dim
+    lslice = (slice(None, None, None),) * dim   # slice(start, stop, step)
     rslice = (slice(None, None, None),) * (a.ndim - dim - 1)
+    print("lslice = ", lslice, "   ", "rslice = ", rslice)
     while ioffset < dimnumel:
         iend = ioffset + csize
         chunks = a[(lslice + (slice(ioffset, iend, None),) +
                     rslice)], ioffset, iend
+        print("chunks = ", chunks)
+        print("chunk tensor shape =", chunks[0].shape, "| start =", chunks[1], "| end =", chunks[2])
         yield chunks
         ioffset = iend
+    print("===================================================Outside chunkify========================================================")
 
 
 def get_memory(a: torch.Tensor) -> int:
@@ -614,6 +620,7 @@ def get_dtype_memsize(a: torch.Tensor) -> int:
         size = 1
     else:
         raise TypeError("Unknown tensor type: %s" % a.dtype)
+    print("size inside get_dtype_memsize in pytorch_utils.py = ", size)
     return size
 
 
