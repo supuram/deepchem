@@ -18,6 +18,7 @@ print("atomzs = ", atomzs)
 print("atomposs = ", atomposs)
 
 xc = LibXCLDA("lda_x")
+print(xc.a_x)
 
 E_z = torch.tensor([0.0, 0.0, 0.01], dtype=torch.double)
 # Wrap it in a list (each element corresponds to index i in the loop)
@@ -115,6 +116,9 @@ print("Coulomb = \n", elrep)
 print("coulomb shape = ", elrep.shape)
 print("\n")
 
+e_xc = hamilton.get_e_xc(dm)
+print("e_xc = ", e_xc)
+
 # 10.
 libxclda_getvxc = xc.get_vxc(densinfo)
 print("\n")
@@ -136,15 +140,40 @@ vxc_linop = hamilton.get_vxc(dm)
 print("vxc_linop = \n", vxc_linop)
 print("vxc_linop shape = ", vxc_linop.shape)
 print("\n")
-print("===========================================================================Ending gga_c_pbe=============================================================================")
+print("======================================================Ending gga_c_pbe===============================================")
 print("\n")
 from deepchem.utils.dft_utils.xc.libxc import LibXCMGGA
 
 xc = LibXCMGGA("mgga_x_scan")
+print(xc.a_x)
 setup = hamilton.setup_grid(grid, xc=xc)
-
 vxc_linop = hamilton.get_vxc(dm)
 print("vxc_linop = \n", vxc_linop)
 print("vxc_linop shape = ", vxc_linop.shape)
 print("\n")
-print("===========================================================================Ending mgga_x_scan=============================================================================")
+print(LibXCMGGA.__mro__)
+print("========================================================Ending mgga_x_scan===================================================")
+xc_b3lyp = LibXCGGA("hyb_gga_xc_b3lyp")
+print("B3LYP a_x =", xc_b3lyp.a_x)
+setup = hamilton.setup_grid(grid, xc=xc)
+vxc_linop = hamilton.get_vxc(dm)
+print("vxc_linop = \n", vxc_linop)
+print("vxc_linop shape = ", vxc_linop.shape)
+e_xc = hamilton.get_e_xc(dm)
+print("e_xc = ", e_xc)
+e_core = hamilton.get_e_hcore(dm)
+e_coul = hamilton.get_e_elrep(dm)
+e_xc = hamilton.get_e_xc(dm)
+e_nuc = system.get_nuclei_energy()
+
+e_tot_deepchem = e_core + e_coul + e_xc + e_nuc
+
+print("--- Energy Breakdown (DeepChem) ---")
+print(f"E_core:    {e_core.item():.6f}")
+print(f"E_coulomb: {e_coul.item():.6f}")
+print(f"E_xc:      {e_xc.item():.6f}")
+print(f"E_nuc:     {e_nuc.item():.6f}")
+print("-----------------------------------")
+print(f"Total E on initial dm: {e_tot_deepchem.item():.6f}")
+
+# Run the SCF operation

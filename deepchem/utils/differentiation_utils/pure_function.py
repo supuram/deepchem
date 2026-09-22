@@ -52,6 +52,9 @@ class PureFunction(object):
         self._cur_objparams = self._uniq.get_unique_objs()
         self._fcntocall = fcntocall
         self._restore_stack: List[Tuple[List, bool]] = []
+        print("self._allobjparams = ", self._allobjparams)
+        print("self._uniq = ", self._uniq)
+        print("self._cur_objparams = ", self._cur_objparams)
 
     def __call__(self, *params):
         """Call the wrapped function with the current object parameters and
@@ -117,8 +120,11 @@ class PureFunction(object):
 
         """
         identical = _check_identical_objs(objparams, self._cur_objparams)
+        print("identical in set_objparams in pure_function.py = ", identical)
         self._restore_stack.append((self._cur_objparams, identical))
+        print("self._restore_stack = ", self._restore_stack)
         if not identical:
+            print("I am inside if not identical in set_objparams in pure_function.py")
             allobjparams = self._uniq.map_unique_objs(objparams)
             self._set_all_obj_params(allobjparams)
             self._cur_objparams = list(objparams)
@@ -221,6 +227,7 @@ class EditableModulePureFunction(PureFunction):
     6
 
     """
+    print("I am inside EditableModulePureFunction")
 
     def __init__(self, obj: EditableModule, method: Callable):
         """Initialize the EditableModulePureFunction.
@@ -235,7 +242,10 @@ class EditableModulePureFunction(PureFunction):
         """
         self.obj = obj
         self.method = method
+        print("self.obj = ", self.obj)
+        print("self.method = ", self.method)
         super().__init__(method)
+        print("method inside init in EditableModulePureFunction in pure_function.py = ", method)
 
     def _get_all_obj_params_init(self) -> List:
         """Get the initial object parameters.
@@ -384,6 +394,7 @@ class SingleSiblingPureFunction(PureFunction):
 
         """
         self.pfunc = get_pure_function(fcn)
+        print("fcntocall inside SingleSiblingPureFunction class in pure_function.py = ", fcntocall)
         super().__init__(fcntocall)
 
     def _get_all_obj_params_init(self) -> List:
@@ -431,6 +442,7 @@ class MultiSiblingPureFunction(PureFunction):
             The method to be wrapped
 
         """
+        print("I am inside __init__() of MultiSiblingPureFunction in pure_function.py")
         self.pfuncs = [get_pure_function(fcn) for fcn in fcns]
         self.npfuncs = len(self.pfuncs)
         super().__init__(fcntocall)
@@ -496,25 +508,41 @@ def get_pure_function(fcn) -> PureFunction:
         "torch.nn.Module, a method of xitorch.EditableModule, or a sibling method"
 
     if isinstance(fcn, PureFunction):
+        print("I was inside get_pure_function in pure_function.py file in if", fcn)
         return fcn
 
     elif inspect.isfunction(fcn) or isinstance(fcn, torch.jit.ScriptFunction):
+        print("I was inside get_pure_function in pure_function.py file in 1st elif")
         return FunctionPureFunction(fcn)
 
     # if it is a method from an object, unroll the parameters and add
     # the object's parameters as well
     elif inspect.ismethod(fcn) or hasattr(fcn, "__call__"):
+        print(
+            "inspect.ismethod(fcn) = ",
+            inspect.ismethod(fcn),
+            "\n",
+            "hasattr(fcn, '__call__') = ",
+            hasattr(fcn, "__call__")
+        )
+        print("I was inside get_pure_function in pure_function.py file in 2nd elif")
         if inspect.ismethod(fcn):
+            print("I was inside get_pure_function in pure_function.py file in 2nd elif's 1st if")
             obj = fcn.__self__
+            print("obj = ", obj, "  ", "fcn = ", fcn)
         else:
+            print("I was inside get_pure_function in pure_function.py file in 2nd elif's 1st else")
             obj = fcn
             fcn = fcn.__call__
 
         if isinstance(obj, EditableModule):
+            print("I was inside get_pure_function in pure_function.py file in 2nd elif's 2nd if -",EditableModulePureFunction(obj, fcn))
             return EditableModulePureFunction(obj, fcn)
         elif isinstance(obj, torch.nn.Module):
+            print("I was inside get_pure_function in pure_function.py file in 2nd elif's 1st elif")
             return TorchNNPureFunction(obj, fcn)
         else:
+            print("I was inside get_pure_function in pure_function.py file in 2nd elif's 2nd else")
             raise RuntimeError(errmsg)
 
     else:
@@ -556,6 +584,7 @@ def make_sibling(*pfuncs) -> Callable[[Callable], PureFunction]:
         The decorator function
 
     """
+    print("len(pfuncs), pfuncs, pfuncs[0] = ", len(pfuncs), pfuncs, pfuncs[0])
     if len(pfuncs) == 0:
         raise TypeError("At least 1 function is required as the argument")
     elif len(pfuncs) == 1:

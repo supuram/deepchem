@@ -1,3 +1,5 @@
+# ks.py actually does not do the self consistent field DFT, rather just constructs the fock matrix and the density matrix from the fock matrix
+
 from typing import Optional, Dict, Any, List, Union, Tuple
 import torch
 from deepchem.utils.differentiation_utils import LinearOperator
@@ -46,6 +48,7 @@ class KS(SCF_QCCalc):
 
         """
         engine = KSEngine(system, xc)
+        print("system = ", system, " \n", "xc = ", xc)
         super().__init__(engine, variational)
 
 
@@ -81,17 +84,22 @@ class KSEngine(BaseSCFEngine):
 
         # get the xc object
         if isinstance(xc, str):
-            self.xc: Optional[BaseXC] = get_xc(xc)
+            self.xc: Optional[BaseXC] = get_xc(xc)  # get_xc in dft_utils.api.getxc.py
+            print("self.xc in if statement inside KSEngine in ks.py = ", self.xc)
         elif isinstance(xc, BaseXC):
             self.xc = xc
+            print("self.xc in elif inside KSEngine in ks.py = ", self.xc)
         else:
             self.xc = xc
+            print("self.xc in else statement inside KSEngine in ks.py = ", self.xc)
 
         # system = self.hf_engine.get_system()
         self._system = system
+        print("self._system inside KSEngine in ks.py = ", self._system)
 
         # build and setup basis and grid
         self.hamilton = system.get_hamiltonian()
+        print("self.hamilton inside KSEngine in ks.py = ", self.hamilton)
         if self.xc is not None or system.requires_grid():
             system.setup_grid()
             self.hamilton.setup_grid(system.get_grid(), self.xc)
@@ -101,13 +109,17 @@ class KSEngine(BaseSCFEngine):
         self.hf_engine = HFEngine(system,
                                   restricted=restricted,
                                   build_grid_if_necessary=False)
+        print("self.hf_engine inside KSEngine in ks.py = ", self.hf_engine)
         self._polarized = self.hf_engine.polarized
+        print("self._polarized inside KSEngine in ks.py = ", self._polarized)
 
         # get the orbital info
         self.orb_weight = system.get_orbweight(
             polarized=self._polarized)  # (norb,)
+        print("self.orb_weight inside KSEngine in ks.py = ", self.orb_weight)
         self.norb = SpinParam.apply_fcn(
             lambda orb_weight: int(orb_weight.shape[-1]), self.orb_weight)
+        print("self.norb inside KSEngine in ks.py = ", self.norb)
 
         # set up the vext linear operator
         self.knvext_linop = self.hamilton.get_kinnucl(
@@ -122,6 +134,7 @@ class KSEngine(BaseSCFEngine):
             The system object.
 
         """
+        print("get_system inside KSEngine in ks.py = ", self._system)
         return self._system
 
     @property
@@ -134,6 +147,7 @@ class KSEngine(BaseSCFEngine):
             Shape of the density matrix.
 
         """
+        print("shape inside KSEngine in ks.py = ", self.knvext_linop.shape)
         return self.knvext_linop.shape
 
     @property
@@ -146,6 +160,7 @@ class KSEngine(BaseSCFEngine):
             Dtype of the density matrix.
 
         """
+        print("dtype inside KSEngine in ks.py = ", self.knvext_linop.dtype)
         return self.knvext_linop.dtype
 
     @property
@@ -170,6 +185,7 @@ class KSEngine(BaseSCFEngine):
             If the calculation is polarized.
 
         """
+        print("polarized inside KSEngine in ks.py = ", self._polarized)
         return self._polarized
 
     def dm2scp(
@@ -190,8 +206,10 @@ class KSEngine(BaseSCFEngine):
         """
         if isinstance(dm, torch.Tensor):  # unpolarized
             # scp is the fock matrix
-            fork = self.__dm2fock(dm)
+            fork = self.__dm2fock(dm)   # contains the full matrix addition of H_core + J + V_xc + V_ext_field(if any)
             if isinstance(fork, LinearOperator):
+                print("fork in dm2scp in KSEngine in ks.py = \n", fork)
+                print("fork.fullmatrix() in dm2scp in KSEngine in ks.py = \n", fork.fullmatrix())
                 return fork.fullmatrix()
             else:
                 raise Exception(
@@ -224,6 +242,7 @@ class KSEngine(BaseSCFEngine):
             Density matrix.
 
         """
+        print("I came to scp2dm in KSEngine in ks.py")
         return self.hf_engine.scp2dm(scp)
 
     def scp2scp(self, scp: torch.Tensor) -> torch.Tensor:
@@ -241,6 +260,7 @@ class KSEngine(BaseSCFEngine):
             New self-consistent parameter.
 
         """
+        print("I came to scp2scp in KSEngine in ks.py")
         dm = self.scp2dm(scp)
         return self.dm2scp(dm)
 

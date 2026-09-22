@@ -102,6 +102,9 @@ class BroydenFirst(Jacobian):
         """
         self.x_prev = x0
         self.y_prev = y0
+        print("self.max_rank = ", self.max_rank)
+        print("self.alpha = ", self.alpha)
+        print("self.uv0 = ", self.uv0)
 
         if self.max_rank is None:
             self.max_rank = float('inf')
@@ -109,9 +112,11 @@ class BroydenFirst(Jacobian):
         if self.alpha is None:
             normy0 = torch.norm(y0)
             ones = torch.ones_like(normy0)
+            print("normy0, ones = ", normy0, ones)
             if normy0:
                 self.alpha = 0.5 * torch.max(torch.norm(x0), ones) / normy0
             else:
+                print("Inside else statement of setup() of BroydenFirst Class in jacobian.py")
                 self.alpha = ones
 
         if self.uv0 == "svd":
@@ -119,6 +124,7 @@ class BroydenFirst(Jacobian):
 
         # setup the approximate inverse Jacobian
         self.Gm = LowRankMatrix(-self.alpha, self.uv0, "restart")
+        print("self.Gm in BroydenFirst in jacobian.py = ", self.Gm)
 
     def _reduce(self):
         """
@@ -360,6 +366,7 @@ class LowRankMatrix(object):
 
         """
         self.alpha = alpha
+        print("self.alpha in LowRankMatrix in jacobian.py = ", self.alpha)
         if uv0 is None:
             self.cns = []
             self.dns = []
@@ -368,6 +375,7 @@ class LowRankMatrix(object):
             self.cns = [cn0]
             self.dns = [dn0]
         self.reduce_method = {"restart": 0, "simple": 1}[reduce_method]
+        print("self.reduce_method in LowRankMatrix in jacobian.py = ", self.reduce_method)
 
     def mv(self, v: torch.Tensor) -> torch.Tensor:
         """multiply the matrix with a vector
@@ -384,8 +392,10 @@ class LowRankMatrix(object):
 
         """
         res = self.alpha * v
+        print("res and self.dns in mv() in LowRankMatrix in jacobian.py = ", res, self.dns)
         for i in range(len(self.dns)):
             res += self.cns[i] * torch.dot(self.dns[i], v)
+        print("res after for loop in LowRankMatrix in jacobian.py = ", res)
         return res
 
     def rmv(self, v: torch.Tensor) -> torch.Tensor:

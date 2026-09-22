@@ -51,6 +51,8 @@ class SCF_QCCalc(BaseQCCalc):
         self.device = self._engine.device
         self._has_run = False
         self._variational = variational
+        print("self._engine = ", self._engine, "\n", "self._polarized = ", self._polarized, "\n", "self._shape = ", self._shape)
+        print("self.dtype = ", self.dtype, "\n", "self.device = ", self.device, "\n", "self._has_run = ", self._has_run, "\n", "self._variational = ", self._variational)
 
     def get_system(self) -> BaseSystem:
         """Returns the system in the QC calculation
@@ -121,8 +123,8 @@ class SCF_QCCalc(BaseQCCalc):
             fwd_options = {}
         if bck_options is None:
             bck_options = {}
-        fwd_options = set_default_option(fwd_defopt, fwd_options)
-        bck_options = set_default_option(bck_defopt, bck_options)
+        fwd_options = set_default_option(fwd_defopt, fwd_options)  # set_default_option is in differentiation_util/misc.py
+        bck_options = set_default_option(bck_defopt, bck_options)  # set_default_option() = copy the defaults + overwrite them with whatever the user supplied.
 
         # save the eigen_options for use in diagonalization
         self._engine.set_eigen_options(eigen_options)
@@ -150,13 +152,21 @@ class SCF_QCCalc(BaseQCCalc):
 
         if not self._variational:
             scp0 = self._engine.dm2scp(dm)
-
+            print("bck_options = ", bck_options)
+            print("{**bck_options} = ", {**bck_options})
+            print("fwd_options = ", fwd_options)
+            print("**fwd_options = ", {**fwd_options})
             # do the self-consistent iteration
-            scp = equilibrium(fcn=self._engine.scp2scp,
+            scp = equilibrium(fcn=self._engine.scp2scp,   # equilibrium is in rootfinder.py in differentiation_utils/optimize
                               y0=scp0,
                               bck_options={**bck_options},
                               **fwd_options)
+            print("scp jut after equilibrium in run() in scf_qccalc.py = \n", scp)
 
+            print("bck_options = ", bck_options)
+            print("{**bck_options} = ", {**bck_options})
+            print("fwd_options = ", fwd_options)
+            print("**fwd_options = ", {**fwd_options})
             # post-process parameters
             self._dm = self._engine.scp2dm(scp)
         else:
@@ -404,6 +414,7 @@ class BaseSCFEngine(EditableModule):
             shape of the density matrix in this engine.
 
         """
+        print("shape inside BaseSCFEngine in scf_qccalc.py = ")
         pass
 
     @property

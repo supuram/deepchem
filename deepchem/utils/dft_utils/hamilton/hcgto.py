@@ -71,6 +71,7 @@ class HamiltonCGTO(BaseHamilton):
         self.is_lapl_ao_set = False
         self.xc: Optional[BaseXC] = None
         self.xcfamily = 1
+        self.a_x = 0.0
         self.is_built = False
 
         # initialize cache
@@ -216,8 +217,10 @@ class HamiltonCGTO(BaseHamilton):
         self.xc = xc
         if xc is None:
             self.xcfamily = 1
+            self.a_x = 0.0
         else:
             self.xcfamily = xc.family
+            self.a_x = getattr(xc, "a_x", 0.0)
 
         # save the grid
         self.grid = grid
@@ -456,6 +459,10 @@ class HamiltonCGTO(BaseHamilton):
         print("potinfo shape = ", potinfo.value.shape)
         vxc_linop = SpinParam.apply_fcn(
             lambda potinfo_: self._get_vxc_from_potinfo(potinfo_), potinfo)
+        if self.a_x > 0.0:
+            k_linop = self.get_exchange(dm)
+            v_exact = SpinParam.apply_fcn(lambda k: self.a_x * k, k_linop)
+            vxc_linop = SpinParam.apply_fcn(lambda vg, vx: vg + vx, vxc_linop, v_exact)
         return vxc_linop
 
     # interface to dm
@@ -476,8 +483,9 @@ class HamiltonCGTO(BaseHamilton):
             Density matrix. Shape: (*BOWH, nao, nao)
 
         """
-
+        
         orb_w = orb * orb_weight.unsqueeze(-2)  # (*BOW, nao, norb)
+        print("orb_w in ao_orb2dm in hcgto.py = ", orb_w)
         return torch.matmul(orb, orb_w.transpose(-2, -1))  # (*BOW, nao, nao)
 
     def aodm2dens(self, dm: torch.Tensor, xyz: torch.Tensor) -> torch.Tensor:
@@ -598,8 +606,13 @@ class HamiltonCGTO(BaseHamilton):
         densinfo = SpinParam.apply_fcn(lambda dm_: self._dm2densinfo(dm_),
                                        dm)  # (spin) value: (*BD, nr)
         edens = self.xc.get_edensityxc(densinfo)  # (*BD, nr)
+        print("edens in get_e_xc in hcgto.py = \n", edens)
+        e_grid = torch.sum(self.grid.get_dvolume() * edens, dim=-1)
+        print("e_grid in get_e_xc in hcgto.py = \n", e_grid)
+        if self.a_x > 0.0:
+            return e_grid + self.a_x * self.get_e_exchange(dm)
 
-        return torch.sum(self.grid.get_dvolume() * edens, dim=-1)
+        return e_grid
 
     # free parameters for variational method
     def ao_orb_params2dm(

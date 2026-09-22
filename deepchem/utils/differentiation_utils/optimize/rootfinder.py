@@ -152,15 +152,24 @@ def equilibrium(fcn: Callable[..., torch.Tensor],
 
     """
     pfunc = get_pure_function(fcn)
+    print("pfunc inside equilibrium() in rootfinder.py = ", pfunc)
 
-    @make_sibling(pfunc)
+    @make_sibling(pfunc)  # new_fcn is made into a sibling of pfunc. Because new_fcn needs to use the same underlying object parameters/state as pfunc.
     def new_fcn(y, *params):
+        print("y inside new_fcn in equilibrium() in rootfinder.py = ", y)   # y is the fock matrix
+        print("*params inside new_fcn in equilibrium() in rootfinder.py = ", *params, "  ", "params = ", params)
+        print("y - pfunc(y, *params) inside new_fcn in equilibrium() in rootfinder.py = \n", y - pfunc(y, *params))
         return y - pfunc(y, *params)
 
     method = _get_equilibrium_default_method(method)
+    print("method = ", method)
     fwd_options["method"] = method
+    print("fwd_options is ", fwd_options)
     fwd_fcn = pfunc if method in _EQUIL_METHODS else new_fcn
+    print("fwd_fcn = ", fwd_fcn)
     alg_type = "equilibrium" if method in _EQUIL_METHODS else "rootfinder"
+    print("alg_type = ", alg_type)
+    print("*pfunc.objparams() = ", *pfunc.objparams()) # *pfunc.objparams() contains the basis orthogonalizer matrix S^-1/2, orbital occupancy weights, the 4-center electron repulsion integral (ERI) tensor both J and K, the atomic orbital basis (and its gradient/Laplacian) values evaluated on the numerical integration grid, the grid integration volume weights, and the core one-electron Hamiltonian matrix T + V_nuc
     return _RootFinder.apply(new_fcn, y0, fwd_fcn, alg_type, fwd_options,
                              bck_options, len(params), *params,
                              *pfunc.objparams())
@@ -301,25 +310,41 @@ class _RootFinder(torch.autograd.Function):
             The solution of the rootfinder, minimizer, or equilibrium
 
         """
-
+        print("ctx = ", ctx)
+        print("fcn = ", fcn)
+        print("y0 = ", y0)
+        print("fwd_fcn = ", fwd_fcn)
+        print("alg_type = ", alg_type)
+        print("options = ", options)
+        print("bck_options = ", bck_options)
+        print("nparams = ", nparams)
+        print("*allparams =\n", *allparams)
         # set default options
         config = options
+        print("**config = ", {**config})
         ctx.bck_options = bck_options
 
         params = allparams[:nparams]
         objparams = allparams[nparams:]
+        print("params = \n", params)
+        print("objparams = \n", objparams)
 
-        with fwd_fcn.useobjparams(objparams):
-
+        with fwd_fcn.useobjparams(objparams): 
+        # useobjparams -> set_objparams -> _check_identical_objs (all these in pure_function.py) -> Uniquifier class-> get_unique_objs -> map_unique_objs (all these in misc_utils.py) -> _set_all_obj_params in pure_function.py 
+            print("fwd_fcn._restore_stack = ", fwd_fcn._restore_stack)
             method = config.pop("method")
+            print("method in rootfinder.py = ", method)
             methods = {
                 "minimizer": _OPT_METHODS,
                 "rootfinder": _RF_METHODS,
                 "equilibrium": _EQUIL_METHODS
             }[alg_type]
+            print("methods in rootfinder.py = ", methods)
             name = alg_type
-            method_fcn = get_method(name, methods, method)
+            method_fcn = get_method(name, methods, method)  # get_method in misc.py in differentiation_utils. get_method extracts whichever specific element matches the key string passed into it. It returned broyden1 solely because method="broyden1" was requested
+            print("method_fcn in class _RootFinder in rootfinder.py = ", method_fcn)
             y = method_fcn(fwd_fcn, y0, params, **config)
+            print("y in class _RootFinder in rootfinder.py = ", y)
 
         ctx.fcn = fcn
 
@@ -446,6 +471,7 @@ def _get_equilibrium_default_method(
     if method is None:
         return _get_rootfinder_default_method(method)
     else:
+        print("I am inside _get_equilibrium_default_method in rootfinder.py")
         return method
 
 

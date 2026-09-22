@@ -86,4 +86,6 @@ def get_xc(xcstr: str) -> BaseXC:
 
     # evaluate the expression and return the xc
     glob = {"get_libxc": get_libxc}
+    print("new_xcstr in getxc.py = ", new_xcstr)
+    print("glob in getxc.py = ", glob)
     return eval(new_xcstr, glob)

@@ -64,7 +64,10 @@ class LibXCLDA(BaseXC):
         self._family: int = 1
         self._unpolfcn_wrapper = CalcLDALibXCUnpol  # type: ignore
         self._polfcn_wrapper = CalcLDALibXCPol  # type: ignore
-
+        try:
+            self.a_x = float(self.libxc_unpol.get_hyb_exx_coef())
+        except (ValueError, RuntimeError):
+            self.a_x = 0.0
     @property
     def family(self) -> int:
         """Get the family of the exchange-correlation functional.
@@ -268,9 +271,14 @@ class LibXCGGA(LibXCLDA):
         """
         self.libxc_unpol = pylibxc.LibXCFunctional(name, "unpolarized")
         self.libxc_pol = pylibxc.LibXCFunctional(name, "polarized")
+        print("self.libxc_unpol in LibXCGGA in libxc.py = ", self.libxc_unpol )
         self._family: int = 2
         self._unpolfcn_wrapper = CalcGGALibXCUnpol  # type: ignore
         self._polfcn_wrapper = CalcGGALibXCPol  # type: ignore
+        try:
+            self.a_x = float(self.libxc_unpol.get_hyb_exx_coef())
+        except (ValueError, RuntimeError):
+            self.a_x = 0.0
 
 
 class LibXCMGGA(LibXCLDA):
@@ -324,6 +332,10 @@ class LibXCMGGA(LibXCLDA):
         self._family: int = 4
         self._unpolfcn_wrapper = CalcMGGALibXCUnpol  # type: ignore
         self._polfcn_wrapper = CalcMGGALibXCPol  # type: ignore
+        try:
+            self.a_x = float(self.libxc_unpol.get_hyb_exx_coef())
+        except (ValueError, RuntimeError):
+            self.a_x = 0.0
 
 
 def _prepare_libxc_input(densinfo: Union[SpinParam[ValGrad], ValGrad],
@@ -365,7 +377,8 @@ def _prepare_libxc_input(densinfo: Union[SpinParam[ValGrad], ValGrad],
         Inputs for libxc
 
     """
-    # convert the densinfo into tuple of tensors for libxc inputs
+    # convert the densinfo into tuple of tensors for libxc inputs. Retrieves the value, gradient, laplacian and kin with respect to 
+    # electron density and stores them but doesn't actually calculates its value 
     # the elements in the tuple is arranged according to libxc manual
 
     sigma_einsum = "...dr,...dr->...r"

@@ -61,6 +61,7 @@ def _nonlin_solver(
     """
 
     if method == "broyden1":
+        print("inside _nonlin_solver's if statement in rootsolver.py")
         jacobian = BroydenFirst(alpha=alpha, uv0=uv0, max_rank=max_rank)
     elif method == "broyden2":
         jacobian = BroydenSecond(alpha=alpha, uv0=uv0, max_rank=max_rank)
@@ -79,6 +80,9 @@ def _nonlin_solver(
     # solving complex rootfinder by concatenating real and imaginary part,
     # making the variable twice as long
     x_is_complex = torch.is_complex(x0)
+    print("x_is_complex inside _nonlin_solver in rootsolver.py = ", x_is_complex)
+    print("*params inside _nonlin_solver in rootsolver.py = ", *params)
+    print("fcn inside _nonlin_solver in rootsolver.py = ", fcn)
 
     def _ravel(x: torch.Tensor) -> torch.Tensor:
         # represents x as a long real vector
@@ -99,14 +103,17 @@ def _nonlin_solver(
     xshape = x0.shape
 
     def func(x):
-        return _ravel(fcn(_pack(x), *params))
+        return _ravel(fcn(_pack(x), *params))   # fcn triggers new_fcn in equilibrium() in rootfinder.py
 
     x = _ravel(x0)
+    print("x inside _nonlin_solver in rootsolver.py = ", x)
 
-    y = func(x)
+    y = func(x)   # stores the value of y - pfunc(y, *params) in new_fcn in rootfinder.py, and reshapes it into 1D
+    print("y inside _nonlin_solver in rootsolver.py = ", y)
     y_norm = y.norm()
+    print("y_norm inside _nonlin_solver in rootsolver.py = ", y_norm)
     stop_cond = custom_terminator if custom_terminator is not None \
-        else TerminationCondition(f_tol, f_rtol, y_norm, x_tol, x_rtol)
+        else TerminationCondition(f_tol, f_rtol, y_norm, x_tol, x_rtol)   # goes to the else statement
     if (y_norm == 0):
         return x.reshape(xshape)
 
@@ -127,16 +134,20 @@ def _nonlin_solver(
     for i in range(maxiter):
         tol = min(eta, eta * y_norm)
         dx = -jacobian.solve(y, tol=tol)
+        print("dx inside _nonlin_solver in rootsolver.py = ", dx)
 
         dx_norm = dx.norm()
+        print("dx_norm inside _nonlin_solver in rootsolver.py = ", dx_norm)
         if dx_norm == 0:
             raise ValueError("Jacobian inversion yielded zero vector. "
                              "This indicates a bug in the Jacobian "
                              "approximation.")
 
         if line_search:
+            print("func inside if line_search inside _nonlin_solver in rootsolver.py = ", func)
             s, xnew, ynew, y_norm_new = _nonline_line_search(
                 func, x, y, dx, search_type=line_search)
+            print("inside if line_search s, xnew, ynew, y_norm_new = ", s, "\n", xnew, "\n", ynew, "\n", y_norm_new)
         else:
             xnew = x + dx
             ynew = func(xnew)

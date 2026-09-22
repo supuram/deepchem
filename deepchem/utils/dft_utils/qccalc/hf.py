@@ -268,6 +268,8 @@ class HFEngine(BaseSCFEngine):
         """
         if not self._polarized:
             fock = LinearOperator.m(_symm(scp), is_hermitian=True)
+            print("fock inside scp2dm in HFEngine in hf.py = \n", fock)
+            print("I am inside scp2dm in HFEngine in hf.py")
             return self.__fock2dm(fock)
         else:
             fock_u = LinearOperator.m(_symm(scp[0]), is_hermitian=True)
@@ -488,10 +490,12 @@ class HFEngine(BaseSCFEngine):
             Density matrix.
 
         """
+        print("self._norb in __fock2dm in HFEngine in hf.py = ", self._norb)
         eigvals, eigvecs = self.diagonalize(fock, self._norb)
         dm = SpinParam.apply_fcn(
             lambda eivecs, orb_weights: self._hamilton.ao_orb2dm(
-                eivecs, orb_weights), eigvecs, self._orb_weight)
+                eivecs, orb_weights), eigvecs, self._orb_weight)  # orb_weight is traced to _get_orb_weights function in dft_utils/system/mol.py
+        print("dm in __fock2dm in HFEngine in hf.py = ", dm)
         return dm
 
     def diagonalize(self, fock: Union[LinearOperator, SpinParam[LinearOperator]], norb: Union[int, SpinParam[int]]) -> \
